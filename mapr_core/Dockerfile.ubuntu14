@@ -1,0 +1,61 @@
+FROM ubuntu:14.04
+
+ARG CORE_VERSION
+ARG MEP_VERSION
+
+ENV container docker
+ENV MAPR_HOME="/opt/mapr" \
+	MAPR_LIB="/opt/mapr/lib" \
+    JAVA_HOME="/usr/lib/jvm/java-8-openjdk-amd64" \
+    MAPR_ENVIRONMENT="docker" \
+    MAPR_CONTAINER_DIR="/opt/mapr/docker" \
+    MAPR_ORCHESTRATOR=k8s \
+    MAPR_CORE_VERSION=${CORE_VERSION:-6.0.0} \
+    MAPR_MEP_VERSION=${MEP_VERSION:-4.0.0} \
+    MAPR_ENV_FILE=/etc/profile.d/mapr.sh \
+    OS=ubuntu \
+    MAPR_PKG_URL="http://package.mapr.com/releases" \
+    MAPR_GPG_KEY_URL="http://package.mapr.com/releases/pub/maprgpg.key" \
+    MAPR_PACKAGES_CORE="mapr-core mapr-hadoop-core mapr-mapreduce2 mapr-zk-internal"
+
+#Installing additional packages not in mapr-base for mapr nodes
+RUN export DEBIAN_FRONTEND=noninteractive && apt-get update -qq \
+  && apt-get install --no-install-recommends -q -y curl sudo tzdata wget software-properties-common \
+  apt-utils dnsutils file iputils-ping net-tools nfs-common openssl syslinux sysv-rc-conf libssl1.0.0 \
+  openssh-client openssh-server sshpass \
+  jq uuid-runtime python-dev python-pycurl python-setuptools  \
+  debianutils libnss3 libsysfs2 netcat ntp ntpdate sdparm sysstat unzip
+RUN add-apt-repository ppa:openjdk-r/ppa \
+  && apt-get update \
+  && apt-get install --no-install-recommends -q -y openjdk-8-jdk 
+RUN easy_install pip supervisor
+
+LABEL mapr.os=ubuntu14 mapr.version=$MAPR_CORE_VERSION mapr.mep_version=$MAPR_MEP_VERSION
+
+#Copy supervisor base config files into place
+COPY files/supervisord.conf /etc/supervisor/supervisord.conf
+COPY files/maprsvc.conf /etc/supervisor/conf.d/
+
+#Copy scripts into place
+COPY scripts/*.sh $MAPR_CONTAINER_DIR/
+RUN chmod +x $MAPR_CONTAINER_DIR/*.sh
+
+#Create keys for mapr user account
+RUN mkdir -p $MAPR_CONTAINER_DIR/keys && ssh-keygen -t rsa -N '' -f $MAPR_CONTAINER_DIR/keys/mapr_key -C "mapr"
+#Initialize ssh
+RUN /etc/init.d/ssh start
+
+#Install mapr core packages using mapr-setup.sh (old)
+#RUN $MAPR_CONTAINER_DIR/mapr-setup.sh -r http://package.mapr.com/releases container base $MAPR_CORE_VERSION $MAPR_MEP_VERSION
+#Install mapr core packages directly
+RUN apt-key adv -q --fetch-keys $MAPR_GPG_KEY_URL \
+    && echo "deb $MAPR_PKG_URL/v$MAPR_CORE_VERSION/ubuntu binary trusty" > /etc/apt/sources.list.d/mapr_core.list \
+    && echo "deb $MAPR_PKG_URL/MEP/MEP-$MAPR_MEP_VERSION/ubuntu binary trusty" > /etc/apt/sources.list.d/mapr_eco.list \
+    && export DEBIAN_FRONTEND=noninteractive && apt-get update -qq \
+    && apt-get install --no-install-recommends -q -y $MAPR_PACKAGES_CORE
+
+WORKDIR $MAPR_CONTAINER_DIR
+
+EXPOSE 22
+
+CMD ["/opt/mapr/docker/start-mapr.sh"]

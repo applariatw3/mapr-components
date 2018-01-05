@@ -1,0 +1,44 @@
+README for building the MAPR Core Image used with applariat
+
+MAPR Core is used to create a base docker container image which will be used to create component resources for MAPR.  There are 2 key reasons for using the 
+base image concept, instead of building each component from scratch.
+
+1.  The core image is quite large and it signifcantly reduces build time by using the core image.
+2.  It provides a common server model that is consistent and repeatable for all components.
+
+The MAPR Core image is built with the following:
+ - Starts from a base OS image - seperated into distinct Dockerfiles
+ - Installs all MAPR dependent packages
+ - Creates a set of SSH keys for the mapr admin user to enable passwordless SSH
+ - Copies common files and scripts 
+ - Installs the core MAPR packages based on the Core and MEP versions provided
+
+
+ To build the core image(s):
+
+ Run the docker-build.sh script:
+
+ All options must be provided in the order specified, but are optional as defaults are specified.
+ CORE_VERSION=MAPR Core Version (default: 6.0.0)
+ MEP_VERSION=MAPR MEP Version (default: 4.0.0)
+ BASE_OS=the tag name on the end of the Dockerfiles, the image will be built from that Dockerfile (default: ubuntu14)
+ REPO_ACCOUNT=the account identifier of the docker repo (default: maprtech)
+ IMAGE_NAME=name of the image (default: mapr-core)
+ IMAGE_TAG=the tag for the image (default: $CORE_VERSION_$MEP_VERSION_$OS_TAG)
+ PUSH_TO_HUB=1 to push to remote docker repo (must be logged in), 0 to keep image local only (default: 0)
+
+ To modify any of these defaults, just update the docker-build.sh script
+
+ ./docker-build.sh  [CORE_VERSION  MEP_VERSION  BASE_OS  REPO_ACCOUNT  IMAGE_NAME  IMAGE_TAG  PUSH_TO_HUB]
+
+ example: build MAPR Core for 5.2.2, 3.0.2 on ubuntu14
+
+ ./docker-build.sh 5.2.2 3.0.2
+
+ example: build MAPR Core for 5.2.2, 3.0.2 on centos6
+
+./docker-build.sh 5.2.2 3.0.2 centos6
+
+example: set all fields on command line
+
+./docker-build.sh 5.2.2 3.0.2 centos6 applariat maprcore 5.2.2-3.0.2 1

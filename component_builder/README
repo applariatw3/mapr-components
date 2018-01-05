@@ -1,0 +1,38 @@
+README for building the individual MAPR Component Images used with applariat
+
+The individual MAPR Component images are built on top of the MAPR Core image. The intent is to build a group of component images
+that can be combined to create MAPR Clusters.  Instead of grouping several components into a single image, we follow the intent
+of containers by isolating services into their own container object.  However since every image is built from the same core image
+they all inherit any needed common capabilities (i.e. passwordless ssh)
+
+To simplify the individual component images, they are all built from this single project
+
+The key features of this project include:
+ - Multiple components can be built and pushed to a docker repo by running the image-builds.sh and either passing command line arguments
+   or adjusting the all array set by default
+ - Which packages to install for a given component is controlled in the build.sh script based on arguments passed into the Dockerfile
+ - The scripts folder can be used to overwrite or test changes to the same scripts built into the core image without having to rebuild core
+ - Information needed for creating the MAPR cluster is passed in via environment variables at runtime, no cluster configuration
+   takes place during the build process
+ - All component images use a common entrypoint.sh script which preconfigures each component into the designated cluster.
+ - Currently clusters are being created using a "disk file" created at image startup.
+
+ To build the component image(s):
+
+ Open and edit the image-builds.sh script (optional):
+  - Modify the components you want built in the all array at the top of the script, it is setup to easily comment out components
+    you want to skip
+ 
+ Run the image-builds.sh script:
+  - if you run the image-builds.sh with either the "all" or zero arguments, it will build components based on the elements in the all() array
+  - you can provide specific flags for components, which are listed inside the script or by using the -h argument:
+
+ ./image-builds.sh  [all | list of component flags (zk cldb-mcs yarn rm drill ...)] [-h]
+
+ example: build all component images
+
+ ./image-builds.sh or ./image-builds.sh all
+
+ example: build only zookeeper component
+
+./image-builds.sh zk

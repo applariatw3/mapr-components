@@ -1,0 +1,51 @@
+FROM centos:centos6
+
+ARG CORE_VERSION
+ARG MEP_VERSION
+
+ENV container docker
+ENV MAPR_HOME="/opt/mapr" \
+	  MAPR_LIB="/opt/mapr/lib" \
+    JAVA_HOME="/usr/lib/jvm/java-openjdk" \
+    MAPR_ENVIRONMENT="docker" \
+    MAPR_CONTAINER_DIR="/opt/mapr/docker" \
+    MAPR_ORCHESTRATOR=k8s \
+    MAPR_CORE_VERSION=${CORE_VERSION:-6.0.0} \
+    MAPR_MEP_VERSION=${MEP_VERSION:-4.0.0} \
+    MAPR_ENV_FILE=/etc/profile.d/mapr.sh \
+    OS=centos \
+
+#Install epel-release for running services
+RUN yum install -y epel-release
+
+#Installing os base packages
+RUN yum install -y gcc curl initscripts net-tools sudo wget which syslinux openssl \
+  openssh openssh-server openssh-clients file jq python-devel python-pycurl python-setuptools \
+  java-1.8.0-openjdk-devel device-mapper iputils libsysfs lvm2 nc nfs-utils nss rpcbind sdparm sysstat \
+  && yum -q clean all
+#RUN easy_install pip supervisor
+RUN curl https://bootstrap.pypa.io/get-pip.py | python - && \
+  pip install supervisor && pip install --upgrade setuptools
+ 
+
+LABEL mapr.os=centos6 mapr.version=$MAPR_CORE_VERSION mapr.mep_version=$MAPR_MEP_VERSION
+
+#Copy files into place
+COPY files/supervisord.conf /etc/supervisor/supervisord.conf
+COPY files/maprsvc.conf /etc/supervisor/conf.d/
+
+#Copy scripts into place
+COPY scripts/*.sh $MAPR_CONTAINER_DIR/
+RUN chmod +x $MAPR_CONTAINER_DIR/*.sh
+
+#Create keys for mapr user account
+RUN mkdir -p $MAPR_CONTAINER_DIR/keys && ssh-keygen -t rsa -N '' -f $MAPR_CONTAINER_DIR/keys/mapr_key -C "mapr"
+#Initialize ssh
+RUN /etc/init.d/sshd start
+
+#Install mapr core packages
+RUN $MAPR_CONTAINER_DIR/mapr-setup.sh -r http://package.mapr.com/releases container base $MAPR_CORE_VERSION $MAPR_MEP_VERSION
+
+EXPOSE 22
+
+CMD ["/opt/mapr/docker/start-mapr.sh"]
