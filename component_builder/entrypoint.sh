@@ -308,6 +308,7 @@ fi
 
 if [ -f "$MAPR_CLUSTER_CONF" ]; then
 	args=-R
+	args="$args -N $MAPR_CLUSTER"
 	args="$args -Z $MAPR_ZK_HOSTS"
 	args="$args -v"
 	echo "Re-configuring MapR services ($args)..."
