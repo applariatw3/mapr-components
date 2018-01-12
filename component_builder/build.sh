@@ -15,7 +15,7 @@ SPRVD_CONF="/etc/supervisor/conf.d/maprsvc.conf"
 MAPR_START_ENV="${MAPR_CONTAINER_DIR}/start-env.sh"
 
 #MAPR Drill JDBC
-MAPRJDBC_HOME="/opt/mapr/lib/jdbc"
+MAPRJDBC_HOME="/opt/mapr/jdbc"
 DRILL_HOME="/opt/mapr/drill"
 
 PKG_fs="mapr-fileserver"
@@ -150,8 +150,14 @@ if [ $CREATE_EDGE -eq 1 ]; then
 	#Install MAPR JDBC
 	echo "Installing MAPR Drill JDBC"
 	mkdir -p $MAPRJDBC_HOME
-	#unzip ${MAPR_CONTAINER_DIR}/lib/DrillJDBC41.zip -d $MAPRJDBC_HOME
-	unzip ${MAPR_CONTAINER_DIR}/lib/DrillJDBC41.zip -d $MAPR_LIB_DIR
+	unzip ${MAPR_CONTAINER_DIR}/lib/DrillJDBC41.zip -d $MAPRJDBC_HOME
+	#unzip ${MAPR_CONTAINER_DIR}/lib/DrillJDBC41.zip -d $MAPR_LIB_DIR
+
+	bjar=$(ls $MAPR_LIB_DIR |grep maprfs-6.0.0-mapr-2)
+	if [ $? -eq 0 ]; then
+		echo "Removing extra maprfs jar file from lib directory"
+		rm -rf $MAPR_LIB_DIR/${bjar}
+	fi
 
 	#Install Drill Sqlline and JDBC driver
 	mkdir -p $DRILL_HOME/jars/jdbc-driver

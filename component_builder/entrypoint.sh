@@ -186,7 +186,7 @@ if [ "$MAPR_ORCHESTRATOR" = "k8s" ]; then
 	sed -i "/^MemAvailable/ s/^.*$/MemAvailable:     $mem_total kB/" "$mem_file" || \
 		echo "Could not edit meminfo MemAvailable"
 fi
-	
+
 #Configure OS properties
 # max processes
 ulimit -u ${MAPR_ULIMIT_U:-64000}
@@ -258,6 +258,53 @@ check_hosts(){
 [ $APL_EVENT -eq 1 ] && notify_apl "Running configure.sh on MAPR node: ${POD_NAME}"
 
 #[ -f $MAPR_DATA_MOUNT/mapr-clusters.conf.bak ] && cp -f $MAPR_DATA_MOUNT/mapr-clusters.conf.bak $MAPR_CLUSTER_CONF
+
+if [ $MAPR_CLIENT -eq 1 ]; then
+	if [ -f ${MAPR_HOME}/hadoop/hadoopversion ]; then
+		ver=$(cat ${MAPR_HOME}/hadoop/hadoopversion)
+	else
+		ver=$(ls -lt $MAPR_HOME/hadoop | grep "hadoop-" | head -1 | sed 's/^.*hadoop-//' | awk '{print $1}')
+	fi
+
+	HADOOP_CONF=${MAPR_HOME}/hadoop/hadoop-${ver}/etc/hadoop
+
+	if [ -f ${HADOOP_CONF}/core-site.xml ]; then
+		#Create the core-site.xml file
+		cat > /tmp/core-site.xml << EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<?xml-stylesheet type="text/xsl" href="configuration.xsl"?>
+<!--
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License. See accompanying LICENSE file.
+-->
+
+<!-- Put site-specific property overrides in this file. -->
+
+<configuration>
+<property>
+  <name>fs.mapr.bailout.on.library.mismatch</name>
+  <value>false</value>
+  <description>Disabling to continue running jobs</description>
+</property>
+</configuration>
+EOF
+
+	mv ${HADOOP_CONF}/core-site.xml ${HADOOP_CONF}/core-site.xml.old
+	mv /tmp/core-site.xml ${HADOOP_CONF}/core-site.xml
+
+	fi
+
+fi
+
 
 if [ -f "$MAPR_CLUSTER_CONF" ]; then
 	args=-R
@@ -342,7 +389,7 @@ if [ -f $MAPR_HOME/roles/hive ]; then
 	echo "Configuring Hive"
 	MYSQL_JAR=mysql-connector-java.jar
 	#[ "$OS" = "ubuntu" ] && MYSQL_JAR=libmysql-java.jar
-	if [ -f ${MAPR_HOME}/hive/hiveversion]; then
+	if [ -f ${MAPR_HOME}/hive/hiveversion ]; then
 		ver=$(cat ${MAPR_HOME}/hive/hiveversion)
 	else
 		ver=$(ls -lt $MAPR_HOME/hive | grep "hive-" | head -1 | sed 's/^.*hive-//' | awk '{print $1}')

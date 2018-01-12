@@ -19,9 +19,10 @@ MAPR_ADMIN_GROUP=${MAPR_ADMIN_GROUP:-mapr}
 MAPR_ADMIN_PASS=${MAPR_ADMIN_PASS:-mapr522301}
 CLUSTER_NAME=${CLUSTER_NAME:-demo-cluster}
 MCS_HOST=${MCS_HOST:-mapr-cldb}
+CHECK_CLUSTER=${CHECK_CLUSTER:-1}
 MCS_PORT=${MCS_PORT:-8443}
 MAPR_MOUNT_PATH=${MAPR_MOUNT_PATH:-/mapr}
-CLUSTER_INFO_DIR=${CLUSTER_INFO_DIR:-/user/mapr}
+CLUSTER_INFO_DIR=${CLUSTER_INFO_DIR:-/user/mapr/$CLUSTER_NAME}
 
 
 #Script Variables
@@ -51,7 +52,7 @@ check_cluster(){
 }
 
 echo "Starting Support Services"
-[ $START_SSH -eq 1 ] && service sshd start
+[ $START_SSH -eq 1 ] && service $SSHD start
 
 if [ "$OS" = "centos" ]; then
 	[ $START_NFS -eq 1 ] && service rpcbind start && service nfs-lock start
@@ -87,12 +88,11 @@ while /bin/true; do
 			echo "$CLUSTER_INFO_DIR directory exists in MAPR-FS"
 		else
 			echo "Creating $CLUSTER_INFO_DIR on MAPR-FS"
-			hadoop fs -mkdir -p $CLUSTER_INFO_DIR/$CLUSTER_NAME/files
+			hadoop fs -mkdir -p $CLUSTER_INFO_DIR/files
 			hadoop fs -chown -R $MAPR_ADMIN:$MAPR_GROUP $CLUSTER_INFO_DIR
 			hadoop fs -chmod -R 755 $CLUSTER_INFO_DIR
 		fi
 	
-		CLUSTER_INFO_DIR=${CLUSTER_INFO_DIR}/${CLUSTER_NAME}
 		#If a cldb node, push some info to cluster info
 		if [ -f $MAPR_HOME/roles/cldb ]; then
 			echo "Writing cluster config information to $CLUSTER_INFO_DIR/"
@@ -123,7 +123,7 @@ while /bin/true; do
 				echo "Spark directory exists"
 			else
 				echo "Creating Spark Directory"
-				hadoop fs -mkdir /apps/spark
+				hadoop fs -mkdir -p /apps/spark
 				hadoop fs -chown -R $MAPR_ADMIN:$MAPR_GROUP /apps/spark
 				hadoop fs -chmod -R 777 /apps/spark
 			fi
@@ -137,7 +137,8 @@ while /bin/true; do
 				echo "Spark directory exists"
 			else
 				echo "Creating Spark Directory"
-				hadoop fs -mkdir /apps/spark
+				hadoop fs -mkdir -p /apps/spark
+				hadoop fs -chown -R $MAPR_ADMIN:$MAPR_GROUP /apps/spark
 				hadoop fs -chmod 777 /apps/spark
 			fi
 		fi
@@ -154,11 +155,13 @@ while /bin/true; do
 			chown -fR root:root "$MAPR_HOME/conf/proxy"
 		fi
 		
-		until check_cluster; do
-			echo "$chk_str"
-			sleep 10
-		done
-		echo "CLDB Master is ready, continuing startup for $CLUSTER_NAME..."
+		if [ $CHECK_CLUSTER -eq 1 ]; then
+			until check_cluster; do
+				echo "$chk_str"
+				sleep 10
+			done
+			echo "CLDB Master is ready, continuing startup for $CLUSTER_NAME..."
+		fi
 		
 		if [ -n "$MAPR_MOUNT_PATH" -a -f "$MAPR_FUSE_FILE" ]; then
 			echo "Starting Fuse Client with $MAPR_MOUNT_PATH"

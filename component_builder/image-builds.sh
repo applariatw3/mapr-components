@@ -4,12 +4,12 @@ all=()
 #all+=("zk" "cldb-mcs")
 #all+=("drill")
 #all+=("rm" "yarn")
-#all+=("hive")
-#all+=("spark-yarn")
+all+=("hive")
+all+=("spark-yarn")
 all+=("full-data")
 #all+=("fs")
 all+=("edge")
-#all+=("client")
+all+=("client")
 usage="$(basename "$0") all || [ ${all[@]} ]"
 
 CORE_TAG=6.0.0_4.0.0_ubuntu14
