@@ -10,6 +10,7 @@ all+=("full-data")
 #all+=("fs")
 all+=("edge")
 all+=("client")
+all+=("gw")
 usage="$(basename "$0") all || [ ${all[@]} ]"
 
 CORE_TAG=6.0.0_4.0.0_ubuntu14
@@ -120,6 +121,10 @@ for i in ${build[@]}; do
 	nfs)		echo "Building NFS"
 				#nfs
 				build_image mapr-nfs nfs fs
+				;;
+	gw)			echo "Building Gateway"
+				#gw
+				build_image mapr-gw gw
 				;;
 	*)			echo $usage
 				;;

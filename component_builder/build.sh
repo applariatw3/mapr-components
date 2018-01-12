@@ -66,6 +66,8 @@ PKG_drill="mapr-drill"
 PORTS_drill="8047 31010"
 PKG_hbrest="mapr-hbase-rest"
 PORTS_hbrest="8080"
+PKG_gw="mapr-gateway"
+PORTS_gw="7660"
 
 START_ZK=0
 START_WARDEN=1
