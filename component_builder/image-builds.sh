@@ -4,13 +4,14 @@ all=()
 #all+=("zk" "cldb-mcs")
 #all+=("drill")
 #all+=("rm" "yarn")
-all+=("hive")
-all+=("spark-yarn")
-all+=("full-data")
+#all+=("hive")
+#all+=("spark-yarn")
+#all+=("full-data")
 #all+=("fs")
-all+=("edge")
-all+=("client")
-all+=("gw")
+#all+=("edge")
+#all+=("client")
+#all+=("gw")
+all+=("base")
 usage="$(basename "$0") all || [ ${all[@]} ]"
 
 CORE_TAG=6.0.0_4.0.0_ubuntu14
@@ -125,6 +126,10 @@ for i in ${build[@]}; do
 	gw)			echo "Building Gateway"
 				#gw
 				build_image mapr-gw gw
+				;;
+	base)		echo "Building base"
+				#base with clients
+				build_image mapr-base base
 				;;
 	*)			echo $usage
 				;;

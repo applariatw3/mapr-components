@@ -360,9 +360,9 @@ if [ $MAPR_RUN_DISKSETUP -eq 1 ]; then
 		echo "Setting up psuedo disk for mapr..."
 		[ -f /data/mapr/storagefile ] && rm -rf /data/mapr/storagefile
 		[ -d /data/mapr ] || mkdir -p /data/mapr
-		#dd if=/dev/zero of=/data/mapr/storagefile bs=1G count=20
+		dd if=/dev/zero of=/data/mapr/storagefile bs=1G seek=20 count=0
 		#truncate -s 20G /data/mapr/storagefile
-		fallocate -l 20G /data/mapr/storagefile
+		#fallocate -l 20G /data/mapr/storagefile
 		echo "/data/mapr/storagefile" > /tmp/disks.txt
 	else
 		echo "Setting up $MAPR_DISKS for mapr..."
