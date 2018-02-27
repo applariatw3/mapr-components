@@ -13,7 +13,7 @@ all+=("client")
 all+=("gw")
 all+=("base")
 usage="$(basename "$0") all || [ ${all[@]} ]"
-:q
+
 CORE_TAG=6.0.0_4.0.0_ubuntu14
 REPO_ACCT=applariat
 REPO_TAG=6.0.0_4.0.0

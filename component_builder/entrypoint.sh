@@ -41,8 +41,9 @@ MAPR_GROUP=${MAPR_GROUP:-mapr}
 USE_FAKE_DISK=${USE_FAKE_DISK:-0}
 ADD_SWAP=${ADD_SWAP:-0}
 MAPR_DATA_MOUNT=${MAPR_DATA_MOUNT:-/data/mapr}
-
-
+EXIT_ON_FAIL=${EXIT_ON_FAIL:-1}
+OVERWRITE_DISK=${OVERWRITE_DISK:-0}
+SAVE_CONF=${SAVE_CONF:-0}
 
 
 #Used for APL Notifications
@@ -100,7 +101,6 @@ MAPR_RUN_DISKSETUP=0
 MAPR_DISKSETUP="$MAPR_HOME/server/disksetup"
 FORCE_FORMAT=1
 STRIPE_WIDTH=3
-REBUILD_NODE=1
 
 #used for startup
 MAPR_START_ENV=${MAPR_CONTAINER_DIR}/start-env.sh
@@ -257,7 +257,7 @@ check_hosts(){
 #configure mapr services
 [ $APL_EVENT -eq 1 ] && notify_apl "Running configure.sh on MAPR node: ${POD_NAME}"
 
-#[ -f $MAPR_DATA_MOUNT/mapr-clusters.conf.bak ] && cp -f $MAPR_DATA_MOUNT/mapr-clusters.conf.bak $MAPR_CLUSTER_CONF
+[ -f $MAPR_DATA_MOUNT/mapr-clusters.conf.bak ] && cp -f $MAPR_DATA_MOUNT/mapr-clusters.conf.bak $MAPR_CLUSTER_CONF
 
 if [ $MAPR_CLIENT -eq 1 ]; then
 	if [ -f ${MAPR_HOME}/hadoop/hadoopversion ]; then
@@ -344,13 +344,11 @@ else
 	args="$args -v"
 	echo "Configuring MapR services ($args)..."
 	$MAPR_CONFIGURE_SCRIPT $args
-	
-	[ -d "$MAPR_DATA_MOUNT" ] && cp -f $MAPR_CLUSTER_CONF $MAPR_DATA_MOUNT/mapr-clusters.conf.bak
 fi
 
 if [ -f $MAPR_HOME/roles/fileserver ]; then	
+	MAPR_RUN_DISKSETUP=${OVERWRITE_DISK}
 	[ ! -f /data/mapr/storagefile ] && MAPR_RUN_DISKSETUP=1
-	[ -n "$REBUILD_NODE" ] && MAPR_RUN_DISKSETUP=1
 fi 
 
 #configure the disks
@@ -380,8 +378,14 @@ if [ $MAPR_RUN_DISKSETUP -eq 1 ]; then
     else
         rc=$?
         rm -f /tmp/disks.txt $MAPR_HOME/conf/disktab
+		rm -f /data/mapr/storagefile
         echo "$MAPR_DISKSETUP failed with error code $rc"
+		[ $EXIT_ON_FAIL -ne 0 ] && exit $EXIT_ON_FAIL
     fi
+else
+	echo "Using existing configured disks"
+	sed -i -e 's/mapr/#mapr/g' /etc/security/limits.conf
+    #sed -i -e 's/AddUdevRules(list(gdevices));/#AddUdevRules(list(gdevices));/g' $MAPR_HOME/server/disksetup
 fi
 
 #If a Hive node, Configure
@@ -495,6 +499,11 @@ fi
 
 . $MAPR_ENV_FILE
 
+if [ -d "$MAPR_DATA_MOUNT" ]; then 
+    #mkdir -p $CLUSTER_INFO_DIR
+    [ $SAVE_CONF -eq 1 ] && cp -f $MAPR_CLUSTER_CONF $MAPR_DATA_MOUNT/mapr-clusters.conf.bak
+fi
+
 #Add records to start-env
 cat >> $MAPR_START_ENV << EOC
 CLUSTER_NAME=$MAPR_CLUSTER
@@ -507,8 +516,8 @@ CLUSTER_INFO_DIR=$CLUSTER_INFO_DIR
 EOC
 
 #create log directories for supervisor
-mkdir -p /var/log/supervisor
-chmod 777 /var/log/supervisor
+#mkdir -p /var/log/supervisor
+#chmod 777 /var/log/supervisor
 
 [ $APL_EVENT -eq 1 ] && notify_apl "Starting services on MAPR node: ${POD_NAME}"
 echo "Starting container with command: $@"

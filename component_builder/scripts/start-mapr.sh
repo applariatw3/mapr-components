@@ -82,25 +82,29 @@ while /bin/true; do
 		fi
 		
 		sleep 5
+
+		if [ -f ${MAPR_HOME}/roles/fileserver ]; then
 		
-		#Add location on MAPR-FS to store cluster info
-		if $(hadoop fs -test -d $CLUSTER_INFO_DIR); then
-			echo "$CLUSTER_INFO_DIR directory exists in MAPR-FS"
-		else
-			echo "Creating $CLUSTER_INFO_DIR on MAPR-FS"
-			hadoop fs -mkdir -p $CLUSTER_INFO_DIR/files
-			hadoop fs -chown -R $MAPR_ADMIN:$MAPR_GROUP $CLUSTER_INFO_DIR
-			hadoop fs -chmod -R 755 $CLUSTER_INFO_DIR
-		fi
-	
-		#If a cldb node, push some info to cluster info
-		if [ -f $MAPR_HOME/roles/cldb ]; then
-			echo "Writing cluster config information to $CLUSTER_INFO_DIR/"
-	
-			maprcli license showid -json |jq -r '.data[].id' >> /tmp/mapr-cluster-id
+			#Add location on MAPR-FS to store cluster info
+			if $(hadoop fs -test -d $CLUSTER_INFO_DIR); then
+				echo "$CLUSTER_INFO_DIR directory exists in MAPR-FS"
+			else
+				echo "Creating $CLUSTER_INFO_DIR on MAPR-FS"
+				hadoop fs -mkdir -p $CLUSTER_INFO_DIR
+				hadoop fs -chown -R $MAPR_ADMIN:$MAPR_GROUP $CLUSTER_INFO_DIR
+				hadoop fs -chmod -R 755 $CLUSTER_INFO_DIR
+			fi
 		
-			hadoop fs -put /tmp/mapr-cluster-id $CLUSTER_INFO_DIR/
-			hadoop fs -chown mapr:mapr $CLUSTER_INFO_DIR/mapr-cluster-id
+			#If a cldb node, push some info to cluster info
+			#if [ ! -f $MAPR_HOME/roles/cldb ]; then
+			#	echo "Writing cluster config information to $CLUSTER_INFO_DIR/"
+		
+			#	maprcli license showid -json |jq -r '.data[].id' >> /tmp/mapr-cluster-id
+
+			
+			#	hadoop fs -put /tmp/mapr-cluster-id $CLUSTER_INFO_DIR/
+			#	hadoop fs -chown mapr:mapr $CLUSTER_INFO_DIR/mapr-cluster-id
+			#fi
 		fi
 	
 		#If a Drill Bits node, push some info to cluster info
