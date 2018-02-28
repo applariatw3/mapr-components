@@ -43,7 +43,7 @@ ADD_SWAP=${ADD_SWAP:-0}
 MAPR_DATA_MOUNT=${MAPR_DATA_MOUNT:-/data/mapr}
 EXIT_ON_FAIL=${EXIT_ON_FAIL:-1}
 OVERWRITE_DISK=${OVERWRITE_DISK:-0}
-SAVE_CONF=${SAVE_CONF:-0}
+SAVE_CONF=${SAVE_CONF:-1}
 
 
 #Used for APL Notifications
@@ -100,6 +100,7 @@ MAPR_CONFIGURE_SCRIPT="$MAPR_HOME/server/configure.sh"
 MAPR_RUN_DISKSETUP=0
 MAPR_DISKSETUP="$MAPR_HOME/server/disksetup"
 FORCE_FORMAT=1
+UPDATE_DISKTAB=0
 STRIPE_WIDTH=3
 
 #used for startup
@@ -347,20 +348,33 @@ else
 fi
 
 if [ -f $MAPR_HOME/roles/fileserver ]; then	
-	MAPR_RUN_DISKSETUP=${OVERWRITE_DISK}
-	[ ! -f /data/mapr/storagefile ] && MAPR_RUN_DISKSETUP=1
+	MAPR_RUN_DISKSETUP=1
+	REBUILD_DISK=${OVERWRITE_DISK}
 fi 
 
 #configure the disks
 if [ $MAPR_RUN_DISKSETUP -eq 1 ]; then
 	[ $APL_EVENT -eq 1 ] && notify_apl "Running disk setup on MAPR node: ${POD_NAME}"
     if [ $USE_FAKE_DISK -eq 1 ]; then
-		echo "Setting up psuedo disk for mapr..."
-		[ -f /data/mapr/storagefile ] && rm -rf /data/mapr/storagefile
+	    echo "Setting up psuedo disk for mapr..."
 		[ -d /data/mapr ] || mkdir -p /data/mapr
-		dd if=/dev/zero of=/data/mapr/storagefile bs=1G seek=20 count=0
-		#truncate -s 20G /data/mapr/storagefile
-		#fallocate -l 20G /data/mapr/storagefile
+	    if [ $REBUILD_DISK -eq 1 -a -f /data/mapr/storagefile ]; then
+			echo "Overwriting existing disk file"
+			rm -rf /data/mapr/storagefile
+			echo "Creating new disk file..."
+			dd if=/dev/zero of=/data/mapr/storagefile bs=1G seek=20 count=0
+		elif [ $REBUILD_DISK -eq 0 -a -f /data/mapr/storagefile ]; then
+			echo "Keeping existing diskfile, updating disktab"
+			[ -f $MAPR_DATA_MOUNT/disktab.bak ] && cp -f $MAPR_DATA_MOUNT/disktab.bak $MAPR_HOME/conf/disktab
+			[ ! -f $MAPR_DATA_MOUNT/disktab.bak ] && touch $MAPR_HOME/conf/disktab
+			FORCE_FORMAT=0
+			UPDATE_DISKTAB=1
+		else
+			echo "Creating disk file..."
+			dd if=/dev/zero of=/data/mapr/storagefile bs=1G seek=20 count=0
+			#truncate -s 20G /data/mapr/storagefile
+			#fallocate -l 20G /data/mapr/storagefile
+		fi
 		echo "/data/mapr/storagefile" > /tmp/disks.txt
 	else
 		echo "Setting up $MAPR_DISKS for mapr..."
@@ -371,6 +385,7 @@ if [ $MAPR_RUN_DISKSETUP -eq 1 ]; then
     sed -i -e 's/AddUdevRules(list(gdevices));/#AddUdevRules(list(gdevices));/g' $MAPR_HOME/server/disksetup
     
     [ $FORCE_FORMAT -eq 1 ] && ARGS="$ARGS -F"
+	[ $UPDATE_DISKTAB -eq 1 ] && ARGS="$ARGS -G"
     [ $STRIPE_WIDTH -eq 0 ] && ARGS="$ARGS -M" || ARGS="$ARGS -W $STRIPE_WIDTH"
     $MAPR_DISKSETUP $ARGS /tmp/disks.txt
     if [ $? -eq 0 ]; then
@@ -502,6 +517,7 @@ fi
 if [ -d "$MAPR_DATA_MOUNT" ]; then 
     #mkdir -p $CLUSTER_INFO_DIR
     [ $SAVE_CONF -eq 1 ] && cp -f $MAPR_CLUSTER_CONF $MAPR_DATA_MOUNT/mapr-clusters.conf.bak
+	cp -f $MAPR_HOME/conf/disktab $MAPR_DATA_MOUNT/disktab.bak
 fi
 
 #Add records to start-env

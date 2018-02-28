@@ -4,10 +4,10 @@
 CORE_VERSION=${1:-6.0.0}
 MEP_VERSION=${2:-4.0.0}
 BASE_OS=${3:-ubuntu14}
-ACCOUNT=${4:-maprtech}
+ACCOUNT=${4:-registry.se.corp.maprtech.com:5000}
 IMAGE_NAME=${5:-mapr-core}
 IMAGE_TAG=${6:-${CORE_VERSION}_${MEP_VERSION}_${BASE_OS}}
-PUSH_TO_HUB=${7:-0}
+PUSH_TO_HUB=${7:-1}
 
 cp -r Dockerfile.$BASE_OS Dockerfile
 
